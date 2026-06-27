@@ -1,6 +1,6 @@
 # The Great SteelSeries Arctis Nova Pro Wireless Unbricking
 
-> A reverse-engineering saga: 7 sessions, 15 gates, 1 bootloader handshake, 0 public tools.
+> A reverse-engineering saga: 7 sessions, 15+ gates, 1 bootloader handshake, and no public tool I could find for this specific recovery path.
 > Outcome: **headset fully recovered from a bricked state, firmware reflashed, system restored to clean.**
 
 ---
@@ -17,7 +17,7 @@
 
 ## The Tools We Built (From Nothing)
 
-No public tool exists that can flash a SteelSeries headset. We had to build everything:
+I could not find a public tool that could flash this Arctis Nova Pro Wireless RX MCU bootloader path. For this one-device recovery, we had to build the missing pieces:
 
 ### Reverse Engineering
 - **Ghidra decompilation** of `SSEdevice.dll` (2,389 functions), `sshid.sys` (156 functions), `ISPDLL.dll`, `HIDDLL.dll`
@@ -126,7 +126,7 @@ Every approach was tested, proven, and documented with evidence.
 - **fwupd SteelSeries plugin:** Supports Stratus Duo, Aerox 3, Nova 5/3P. Does NOT cover Nova Pro Wireless.
 - **HeadsetControl, Arctis Sound Manager, nova-chatmix-linux, GGWP:** NONE implement firmware flashing.
 - **Holtek ISP:** No public recovery tool bypasses needing the MCU already in ISP mode.
-- Conclusion: no existing tool can reflash a Nova Pro Wireless.
+- Conclusion from the tools I checked: I could not find an existing public tool that reflashes the Nova Pro Wireless RX MCU path.
 
 ### Gate 5: usbipd-win Install + WSL + 12E2 Descriptor
 - usbipd-win 5.3.0 installed. 12E2 busid = 2-1.
@@ -315,4 +315,14 @@ C:\Users\timpa\AppData\Local\Temp\
 
 4. **Test-signing + self-signed certs work for driver installation** on Windows 11 with testsigning ON and Secure Boot OFF. The CAT signature was accepted, the driver installed, and PnP loaded it. (It still didn't help because the 1-2s watchdog was too short, but the mechanism worked.)
 
-5. **No public tool can flash a SteelSeries headset.** This is the first known successful reflashing of an Arctis Nova Pro Wireless outside of SteelSeries's own infrastructure.
+5. **No public tool found for this exact path.** I could not find a public tool that flashes this Arctis Nova Pro Wireless RX MCU bootloader path, so this should be framed as a first-known, one-device validated recovery rather than an absolute claim about every private or obscure tool.
+
+
+---
+
+## Authorship Note
+
+This recovery was performed and validated on real hardware by Timpan4, but the scripts,
+reverse-engineering writeups, and documentation were made together with GLM 5.2. The
+human role was primarily prompting, running experiments, supplying logs/device access,
+validating the final flash, and choosing what to publish.
