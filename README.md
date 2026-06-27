@@ -3,9 +3,12 @@
 Tools and documentation for reflashing a bricked SteelSeries Arctis Nova Pro Wireless headset
 when SteelSeries GG cannot perform the update.
 
-This is the result of a full reverse-engineering effort that decompiled SteelSeries's
-`SSEdevice.dll`, decoded the bootloader flash protocol, and built a working flasher
-from scratch. **No public tool existed that could flash a SteelSeries headset MCU.**
+This is a research-grade recovery writeup and toolset from a one-device recovery. It
+documents the reverse-engineering work used to inspect SteelSeries's `SSEdevice.dll`,
+decode the bootloader flash protocol, and build a working flasher for this specific
+Arctis Nova Pro Wireless RX MCU path. I could not find any public tool that could
+flash this headset/bootloader; treat this as a documented working recovery path, not
+as a polished or broadly validated consumer unbricking utility.
 
 ## The Problem
 
@@ -72,6 +75,17 @@ attempt failed because this handshake was never sent.**
 - **Python 3** on Windows (for the boot-enter script)
 - **Firmware file** — Intel HEX format for the RX MCU
 
+## Status and Scope
+
+- **Validated on one bricked Arctis Nova Pro Wireless headset.** The final recovery
+  flashed 211 chunks / 209,712 bytes and reset the device back to normal mode.
+- **Research-grade scripts.** Some orchestration paths still assume the original
+  Windows/WSL setup and may need edits for your machine, USB bus ID, WSL distro,
+  and firmware location.
+- **Not independently validated.** This repository does not include raw USB captures,
+  SteelSeries firmware files, or third-party success reports. Claims such as
+  "first public path" should be read as "first known to me."
+
 ## Usage
 
 ### 1. Install dependencies
@@ -98,7 +112,7 @@ Expected output: `handshake OK: 06b0...` and `Flash packet ... ack=06a1...`
 ### 3. Flash the firmware
 
 ```powershell
-# Edit wsl_flash_rx.py to set FIRMWARE path, then run elevated:
+# Pass your firmware path or edit the FIRMWARE default, then run elevated:
 powershell -ExecutionPolicy Bypass -File scripts\run_flash.ps1
 ```
 
@@ -121,7 +135,7 @@ powershell -ExecutionPolicy Bypass -File scripts\cleanup.ps1
 
 ```
 scripts/
-  wsl_flash_rx.py          # Flash script: parses Intel HEX, sends 0xA106 chunks, verifies acks
+  wsl_flash_rx.py          # Flash script: validates Intel HEX, sends 0xA106 chunks, verifies acks
   wsl_probe_v3.py          # Non-destructive probe: sends handshake + size=0 packet
   send_boot_enter_only.py  # Sends [07 2C EF] to 12E2 via HID WriteFile
   run_flash.ps1            # Elevated orchestrator: boot-enter + attach + flash
@@ -136,12 +150,17 @@ docs/
 ## Warning
 
 **This writes firmware to your headset's MCU.** A failed flash can leave the device in
-a worse state. The scripts verify every chunk ack and abort cleanly on failure, but
-there is inherent risk. Use at your own risk.
+a worse state. The flash script validates Intel HEX record checksums, verifies every chunk ack, and
+aborts cleanly on failure, but there is inherent risk. Use at your own risk.
 
 ## Credits
 
-Reverse-engineered and built by [Timpan4](https://github.com/Timpan4).
+Recovered, prompted, tested, and documented by [Timpan4](https://github.com/Timpan4).
+
+The reverse-engineering notes, scripts, and documentation were made together with
+GLM 5.2. The human contribution was primarily prompting, running the experiments,
+providing device access, validating results on real hardware, and deciding what to
+publish.
 
 ## License
 

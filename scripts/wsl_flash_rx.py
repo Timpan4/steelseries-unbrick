@@ -8,9 +8,11 @@ Protocol decoded from SSEdevice.dll FlashFirmwareArctisNovaProWirelessMCU:
   4. Reset 0xbb06 = [06, bb]
 Transport: SET_REPORT feature (report ID 6, 1024-byte buffer = 1 reportID + 1023 data)
 """
-import usb.core, usb.util, sys, time, signal, zlib
+import argparse, signal, sys, time, zlib
 
-FIRMWARE = "/mnt/c/Users/timpa/Desktop/steelseries_firmware_backup/272110306/firmware_arctis_nova_pro_wireless_rx_mcu_v1.22.11.hex"
+import usb.core, usb.util
+
+DEFAULT_FIRMWARE = "/mnt/c/Users/timpa/Desktop/steelseries_firmware_backup/272110306/firmware_arctis_nova_pro_wireless_rx_mcu_v1.22.11.hex"
 CHUNK = 1012
 
 def al(s, f):
@@ -23,12 +25,24 @@ def parse_hex(path):
     cur_a = None
     cur_d = bytearray()
     with open(path, "r") as f:
-        for line in f:
+        for line_no, line in enumerate(f, 1):
             line = line.strip()
-            if not line or not line.startswith(":"):
+            if not line:
                 continue
-            raw = bytes.fromhex(line[1:])
+            if not line.startswith(":"):
+                raise ValueError("line %d: Intel HEX record must start with ':'" % line_no)
+            try:
+                raw = bytes.fromhex(line[1:])
+            except ValueError as exc:
+                raise ValueError("line %d: invalid hex data" % line_no) from exc
+            if len(raw) < 5:
+                raise ValueError("line %d: record is too short" % line_no)
             bc = raw[0]
+            expected_len = 5 + bc
+            if len(raw) != expected_len:
+                raise ValueError("line %d: byte count %d does not match record length %d" % (line_no, bc, len(raw)))
+            if sum(raw) & 0xff:
+                raise ValueError("line %d: Intel HEX checksum mismatch" % line_no)
             addr = (raw[1] << 8) | raw[2]
             rt = raw[3]
             data = raw[4:4+bc]
@@ -44,23 +58,33 @@ def parse_hex(path):
             elif rt == 0x01:
                 break
             elif rt == 0x04:
+                if bc != 2:
+                    raise ValueError("line %d: extended linear address record must contain 2 bytes" % line_no)
                 if cur_d:
                     segs.append((cur_a, bytes(cur_d)))
                     cur_d = bytearray()
                     cur_a = None
                 ela = (data[0] << 8) | data[1]
             elif rt == 0x02:
+                if bc != 2:
+                    raise ValueError("line %d: extended segment address record must contain 2 bytes" % line_no)
                 if cur_d:
                     segs.append((cur_a, bytes(cur_d)))
                     cur_d = bytearray()
                     cur_a = None
                 ela = ((data[0] << 8) | data[1]) >> 4
+            else:
+                raise ValueError("line %d: unsupported Intel HEX record type 0x%02x" % (line_no, rt))
     if cur_d:
         segs.append((cur_a, bytes(cur_d)))
     return segs
 
-print("parsing firmware...", flush=True)
-segs = parse_hex(FIRMWARE)
+parser = argparse.ArgumentParser(description="Flash SteelSeries Arctis Nova Pro Wireless RX MCU firmware via 12E3 bootloader")
+parser.add_argument("firmware", nargs="?", default=DEFAULT_FIRMWARE, help="Intel HEX firmware path")
+args = parser.parse_args()
+
+print("parsing firmware: %s" % args.firmware, flush=True)
+segs = parse_hex(args.firmware)
 total = sum(len(d) for _, d in segs)
 print("RESULT: %d segments, %d bytes total" % (len(segs), total), flush=True)
 for i, (a, d) in enumerate(segs):
